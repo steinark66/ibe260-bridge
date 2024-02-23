@@ -1,0 +1,23 @@
+
+> server@1.0.0 dev
+> node ./node_modules/nodemon/bin/nodemon.js -e ts --exec "npm run compile"
+
+[33m[nodemon] 3.0.2[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts[39m
+[32m[nodemon] starting `npm run compile`[39m
+
+> server@1.0.0 compile
+> npx tsc && node ./dist/main.js
+
+src/main.ts(416,23): error TS2339: Property 'join' does not exist on type '"\n    <html>\n      <head>\n        <title>Dette er \"hånda\"</title>\n      </head>\n      <body> "'.
+src/main.ts(419,22): error TS7006: Parameter 'pl' implicitly has an 'any' type.
+src/main.ts(419,41): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+src/main.ts(423,10): error TS2339: Property 'join' does not exist on type '""'.
+src/main.ts(423,25): error TS2552: Cannot find name 'card'. Did you mean 'Card'?
+src/main.ts(423,47): error TS2552: Cannot find name 'card'. Did you mean 'Card'?
+src/main.ts(424,10): error TS2339: Property 'join' does not exist on type '""'.
+src/main.ts(426,12): error TS2552: Cannot find name 'plass'. Did you mean 'Plass'?
+src/main.ts(427,15): error TS2339: Property 'join' does not exist on type '""'.
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
