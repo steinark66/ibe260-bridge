@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.renderDeck = exports.getDeck = exports.printDeck = exports.randomBytes = void 0;
+exports.lower_than = exports.melding2string = exports.renderDeck = exports.getDeck = exports.printDeck = exports.randomBytes = void 0;
 const Bord_1 = require("./Bord");
 var suits = ["spar", "ruter", "klver", "hjerter"];
 var values = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
@@ -10,9 +10,9 @@ const length = 16;
 // Generer en unik streng med tilfeldige tall
 exports.randomBytes = crypto.randomBytes(length);
 function printDeck(deck) {
-    console.log(`Kortstokken inneholder ${deck.length} kort!`);
+    //console.log(`Kortstokken inneholder ${deck.length} kort!`)
     for (let i = 0; i < deck.length; i++) {
-        console.log(`Farge: ${deck[i].suit} og valør ${deck[i].rank}. `);
+        ; //console.log(`Farge: ${deck[i].suit} og valør ${deck[i].rank}. `);
     }
     return deck;
 }
@@ -29,7 +29,7 @@ function getDeck() {
     return deck;
 }
 exports.getDeck = getDeck;
-function renderDeck(pl, deck) {
+function renderDeck(pl, deck, b) {
     //gjenskap denne i enkel HTML
     //printDeck(b.spillere[Plass.North].pick_up_cards(dealtDeck[Plass.North])); 
     //document.getElementById("deck").innerHTML = "";
@@ -44,7 +44,7 @@ function renderDeck(pl, deck) {
         <title>Dette er kortene vi har fordelt: </title>
       </head>
       <body> `;
-    const html_body = render_body(pl, deck);
+    const html_body = render_body(pl, deck, b);
     const html_slutt = `
       </body>
     </html>
@@ -52,8 +52,8 @@ function renderDeck(pl, deck) {
     return html_start + html_body + html_slutt;
 }
 exports.renderDeck = renderDeck;
-function render_body(pl, deck) {
-    let divs = "<div> \n " + `Spiller ${Bord_1.b.plass2String(pl)} har fått følgende kort: \n`;
+function render_body(pl, deck, b) {
+    let divs = "<div> \n " + `Spiller ${b.plass2String(pl)} har fått følgende kort: \n`;
     //console.log(`render for ${plass2String(pl)} og ${deck[pl].length}`); 
     divs += "<ul>";
     for (let i = 0; i < deck[pl].length; i++) {
@@ -66,10 +66,39 @@ function render_body(pl, deck) {
     divs += "</ul>";
     divs = divs + "\n </div>";
     if (pl < Bord_1.Plass.West)
-        return divs + render_body(pl + 1, deck);
+        return divs + render_body(pl + 1, deck, b);
     else
         return divs + "\n";
 }
 ;
 ;
 let hands;
+function melding2string(m) {
+    return m.niva + " " + m.suit;
+}
+exports.melding2string = melding2string;
+function lower_than(m, n) {
+    console.log(`Sjekker om ${m.niva} ${m.suit} er lavere enn ${n.niva} ${n.suit} `);
+    if (m.niva < n.niva) {
+        console.log(true);
+        return true;
+    }
+    if (m.niva > n.niva) {
+        console.log(false);
+        return false;
+    }
+    if (m.suit === 'NT') {
+        console.log("(m.suit === 'NT')");
+        console.log("n.suit er derimot " + n.suit);
+        console.log(n.suit === 'NT');
+        return n.suit === 'NT';
+    }
+    else {
+        const suits = ['klver', 'ruter', 'hjerter', 'spar'];
+        const mSuitIndex = suits.indexOf(m.suit);
+        const nSuitIndex = suits.indexOf(n.suit);
+        console.log(mSuitIndex < nSuitIndex);
+        return mSuitIndex < nSuitIndex;
+    }
+}
+exports.lower_than = lower_than;

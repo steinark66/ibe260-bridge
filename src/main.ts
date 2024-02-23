@@ -9,7 +9,7 @@ import express, { Express, NextFunction, Request, Response } from "express";
 import {SessionData, Card} from "./typings/express-session/index";
 
 // Blir stort nok dette prosjektet, så jeg deler det opp 
-import { KortBordIF, KortBord, BridgeBord, Plass, b } from './Bord'; 
+import { KortBord, BridgeBord, Plass } from './Bord'; 
 import {Spiller} from './Spiller'; 
 import * as Utils from "./Utils"; 
 
@@ -17,6 +17,8 @@ import * as Utils from "./Utils";
 const app: Express = express();
 
 var session = require('express-session'); //gammel skrivemåte - rydd opp
+
+const b: BridgeBord = new BridgeBord(); 
 
 // Handle JSON in request bodies.
 app.use(express.json());
@@ -67,9 +69,12 @@ async (inRequest: Request, inResponse: Response) => {
   }
 
   b.incPlayersConnected=1; 
-  
+  if (b.playersConnected === 4)
+    //b = new BridgeBord();
+    b.nullstill(); 
   try {
-    b.spillere.push(new Spiller(session.username)); 
+    
+    b.spillere.push(new Spiller(session.username, b)); 
     console.log("POST /ta-plass: Ok");
     inResponse.send("<html><head></head><body></body></html>");
   } catch (inError) {
@@ -106,7 +111,7 @@ if (b.playersReady === b.playersConnected) {
         b.spillere[Plass.West].pick_up_cards(dealtDeck[Plass.West] //)
         ); 
 
-      const html_output: string = Utils.renderDeck(Plass.North, dealtDeck);     
+      const html_output: string = Utils.renderDeck(Plass.North, dealtDeck, b);     
       console.log("Vi har nok spillere nå");  
       res.send(html_output);
 
@@ -125,20 +130,31 @@ if (b.playersReady === b.playersConnected) {
 app.get('/meld', (req, res) => {
   
   //current_bidder skal melde og øke med klokka (pluss på 1)
-  b.siste_melding = b.spillere[b.current_bidder].tellPoengOgMeld(); 
+
+  let siste_m = b.spillere[b.current_bidder].tellPoengOgMeld(); 
+
+  if (siste_m.niva !== 0) //pass 
+  {
+    b.siste_melding = siste_m; 
+    b.siste_i_boksen = {plass: b.current_bidder, melding: b.siste_melding}; 
+  }
+
+  let tekst_melding = Utils.melding2string(siste_m);
+
+  let melding = b.plass2String(b.current_bidder) + " melder " + tekst_melding + " med "
+    + b.spillere[b.current_bidder].poeng + " poeng "; 
   
-  let tekst_melding = b.spillere[b.current_bidder].melding2string(b.siste_melding);
-  let melding = b.plass2String(b.current_bidder) + " melder " + tekst_melding; 
   if (b.no_pass < 4) 
   { 
     b.nestemelder();
     res.send(`<html><head></head><body> ${melding} </body></html>`);
   } else 
-  res.send(`<html><head></head><body> Da kan dere begynne å spille - alle har passet </body></html>`);
+  {
+    b.no_pass = 0; 
+    res.send(`<html><head></head><body> Da kan dere begynne å spille - alle har passet </body></html>`);
+  }
 
 });
-
-
 
 
 app.get("/nullstill", (req, res) => {

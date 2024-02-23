@@ -1,5 +1,5 @@
 import {SessionData, Card} from "./typings/express-session/index";
-import { KortBordIF, KortBord, BridgeBord, Plass, b } from './Bord'; 
+import { KortBord, BridgeBord, Plass } from './Bord'; 
 
 var suits = ["spar", "ruter", "klver", "hjerter"];
 var values = [2,3,4,5,6,7,8,9,10,11,12,13,14];
@@ -15,11 +15,11 @@ export const randomBytes = crypto.randomBytes(length);
 
 export  function printDeck(deck: Card[])
 {
-  console.log(`Kortstokken inneholder ${deck.length} kort!`)
+  //console.log(`Kortstokken inneholder ${deck.length} kort!`)
 	for(let i = 0; i < deck.length; i++)
 	{
     
-      console.log(`Farge: ${deck[i].suit} og valør ${deck[i].rank}. `);
+      ; //console.log(`Farge: ${deck[i].suit} og valør ${deck[i].rank}. `);
 		
 	}
 
@@ -43,7 +43,7 @@ export function getDeck()
 }
 
 
-export function renderDeck(pl: Plass, deck: Card[]): string
+export function renderDeck(pl: Plass, deck: Card[], b: BridgeBord): string
 {
   //gjenskap denne i enkel HTML
   //printDeck(b.spillere[Plass.North].pick_up_cards(dealtDeck[Plass.North])); 
@@ -63,7 +63,7 @@ export function renderDeck(pl: Plass, deck: Card[]): string
       </head>
       <body> `; 
 
-  const html_body = render_body(pl, deck); 
+  const html_body = render_body(pl, deck, b); 
 
     const html_slutt = `
       </body>
@@ -73,7 +73,7 @@ export function renderDeck(pl: Plass, deck: Card[]): string
     return html_start + html_body + html_slutt; 
 }
 
-function render_body(pl: Plass, deck: Card[][]): string {
+function render_body(pl: Plass, deck: Card[][], b: BridgeBord): string {
   let divs: string = "<div> \n " + `Spiller ${b.plass2String(pl)} har fått følgende kort: \n`
   ; 
   //console.log(`render for ${plass2String(pl)} og ${deck[pl].length}`); 
@@ -91,7 +91,7 @@ function render_body(pl: Plass, deck: Card[][]): string {
 
 
   if (pl < Plass.West )
-  return divs + render_body(pl + 1, deck); 
+  return divs + render_body(pl + 1, deck, b); 
     else
   return divs + "\n"; 
 };
@@ -112,7 +112,6 @@ export type Melding = {niva: number, suit: string};
 };
 
   
-  
   interface Runde {
   
   }
@@ -126,4 +125,36 @@ export type Melding = {niva: number, suit: string};
   }
   
   let hands: Card[][]; 
+  
+
+  export function melding2string(m: Melding): string {
+    return m.niva + " " + m.suit;  
+  }
+
+  export function lower_than(m: Melding, n: Melding): boolean {
+    console.log(`Sjekker om ${m.niva} ${m.suit} er lavere enn ${n.niva} ${n.suit} `); 
+
+    if (m.niva < n.niva) {
+        console.log(true); 
+        return true;
+    }
+    if (m.niva > n.niva) {
+        console.log(false);
+        return false;
+    }
+    if (m.suit === 'NT') {
+      console.log ("(m.suit === 'NT')");  
+      console.log ("n.suit er derimot " + n.suit );   
+      console.log(n.suit === 'NT');   
+      return n.suit === 'NT';
+
+    } else {
+      const suits = ['klver', 'ruter', 'hjerter', 'spar'];
+      const mSuitIndex = suits.indexOf(m.suit);
+      const nSuitIndex = suits.indexOf(n.suit);
+      console.log(mSuitIndex < nSuitIndex); 
+      return mSuitIndex < nSuitIndex;
+    }
+  
+}
   

@@ -1,5 +1,5 @@
 import {SessionData, Card} from "./typings/express-session/index";
-import { KortBordIF, KortBord, BridgeBord, Plass, b } from './Bord'; 
+import { KortBord, BridgeBord, Plass } from './Bord'; 
 import * as Utils from './Utils'; 
 
 export interface SpillerIF {
@@ -18,11 +18,22 @@ export class Spiller implements SpillerIF {
   secret: string; 
   pos: Plass; 
   my_cards: Array<Card>; 
+  private _poeng: number = 0; 
+  bord: BridgeBord;  
 
-  constructor(pos: Plass) {
+  constructor(pos: Plass, bbord: BridgeBord ) {
     this.secret = Utils.randomBytes.toString('hex');
     this.pos = pos; 
     this.my_cards = []; 
+    this.bord = bbord; 
+  }
+
+  get poeng() {
+    return this._poeng;
+  }
+
+  set poeng(p: number) {
+    this._poeng = p; 
   }
 
   receive_cards(cards: Array<Card>): Array<Card> {
@@ -30,7 +41,6 @@ export class Spiller implements SpillerIF {
     return this.my_cards; 
   }
 
-  
   shuffle_cards(cards: Array<Card>): Array<Card> {
     // Fisher-Yates algorithm for å stokke korten helt rettferdig
     for (let i = cards.length - 1; i > 0; i--) {
@@ -62,23 +72,24 @@ export class Spiller implements SpillerIF {
       cards = cardio;
     else cards = this.my_cards; 
 
-    console.log("Vi har " + b.no_pass + " som har passet"); 
+    console.log("Vi har " + this.bord.no_pass + " som har passet til nå"); 
+    console.log("Siste melding var fra " + this.bord.siste_i_boksen.plass + " : " + this.bord.siste_i_boksen.melding.niva + " " + this.bord.siste_i_boksen.melding.suit); 
 
-    if (b.no_pass >= 3) 
+    if (this.bord.no_pass >= 3) 
     {
-      b.no_pass++; 
+      this.bord.no_pass += 1; 
       return {niva: 0, suit: "Pass"}; 
     }
 
-    if (b.siste_i_boksen.melding.niva === 0) //Åpningsmelding
+    if (this.bord.siste_i_boksen.melding.niva === 0) //Åpningsmelding
       return this.opening_tellPoengOgMeld(cards); 
-    else if (!b.spillere[b.current_bidder].min_makker(b.siste_i_boksen.plass)) //defensiv melding
+    else if (!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //defensiv melding
       return this.defensiv_tellPoengOgMeld(cards);  
     else //egentlig unødvendig test, må være makker som har meldt - eller jeg selv? 
-        if (!b.spillere[b.current_bidder].min_makker(b.siste_i_boksen.plass)) //støttemelding
+        if (!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //støttemelding
       return this.support_tellPoengOgMeld(cards);
     else {
-      b.no_pass++; 
+      this.bord.no_pass += 1; 
       return {niva: 0, suit: "Pass"}; 
     }
     //Vi har gått runden?  
@@ -95,22 +106,18 @@ export class Spiller implements SpillerIF {
       cards = cardio;
     else cards = this.my_cards; 
 
+    console.log("Opening"); 
 
     for (let i = 0; i < cards.length; i++) {
       let card = cards[i];
       let rank = card.rank;
       let suit = card.suit;
   
-      // Tell poengene for høy ranking av kort, hvor ess = 4, konge = 3, dame = 2 og knekt = 1
+      // Tell poengene for honnørkortene, hvor ess = 4, konge = 3, dame = 2 og knekt = 1
       if (rank >= 11) {
         points += rank - 10;
       }
-  
-      /* Tell 1 poeng for hver av de 4 laveste kortene
-      if (rank <= 4) {
-        points += 1;
-      }*/
-  
+
       // Hold oversikt over antall kort i hver farge
       if (suit in suits) {
         suits[suit]++;
@@ -126,6 +133,8 @@ export class Spiller implements SpillerIF {
     fordelingspoeng += (suits['ruter'] >= 5) ? suits['ruter'] - 4 : 0;
     fordelingspoeng += (suits['klver'] >= 5) ? suits['klver'] - 4 : 0;
     */
+
+    //Lettere å lese det slik:
     let fpo = 0; 
     Object.keys(suits).forEach((key) => {
       if (suits[key] === 0)
@@ -138,17 +147,21 @@ export class Spiller implements SpillerIF {
     });
     points+=fpo; 
 
+    this._poeng = points;  
+
     // Bestem åpningsmeldingen basert på poengsummen
     
     if (points >= 13) {
+
       if (points >= 16) {
+        this.bord.no_pass = 0; //bør egentlig bare få "lage" meldinger et sted der dette skjer automatisk
         return  {niva: 1, suit: 'NT'};  //'1 NT';
       }
+
       /*
       let longestSuit = Object.keys(suits).reduce((a,b) => suits[a] > suits[b] ? a : b);
       */
-
-      // Løkke med "for"
+      // Løkke med "for" gjør det samme, men enklere på lese
       for (const suit of Object.keys(suits)) {
         if (suits[suit] > longestLengde) {
           longestLengde = suits[suit]; 
@@ -156,131 +169,16 @@ export class Spiller implements SpillerIF {
         }
       }
       console.log(`Poeng på hånda: ${points}!`); 
+      this.bord.no_pass = 0; 
       return {niva: 1, suit: longestSuit}; // `1 ${longestSuit}`;
     }
     console.log(`Poeng på hånda: ${points}!`); 
-    b.no_pass++; 
+    this.bord.no_pass += 1; 
     return {niva: 0, suit: 'Pass'}; //'Pass';
   };
   
 
-  lower_than = (m: Utils.Melding, n: Utils.Melding): boolean => {
-    if (m.niva > n.niva)
-      return false; 
-    else if (m.niva == n.niva)
-      switch (m.suit) {
-        case 'NT':
-        switch (n.suit) {
-          case 'NT':
-            return false; 
-          break;
-          case 'spar':
-            return false; 
-          break;
-          case 'hjerter':
-            return false; 
-          break;
-          case 'ruter':
-            return false; 
-          break;
-          case 'klver':
-            return false; 
-          break;
-          default: 
-            return false; 
-        }
-        break;
-        case 'spar':
-        switch (n.suit) {
-          case 'NT':
-            return false; 
-          break;
-          case 'spar':
-            return false; 
-          break;
-          case 'hjerter':
-            return true; 
-          break;
-          case 'ruter':
-            return true; 
-          break;
-          case 'true':
-            return true; 
-          break;
-          default: 
-            return false; 
-        }
-        break;
-        case 'hjerter':
-        switch (n.suit) {
-          case 'NT':
-            return false; 
-          break;
-          case 'spar':
-            return false; 
-          break;
-          case 'hjerter':
-            return false; 
-          break;
-          case 'ruter':
-            return true; 
-          break;
-          case 'klver':
-            return true; 
-          break;
-          default: 
-            return false; 
-        }
-        break;
-        case 'ruter':
-        switch (n.suit) {
-          case 'NT':
-            return false; 
-          break;
-          case 'spar':
-            return false; 
-          break;
-          case 'hjerter':
-            return false; 
-          break;
-          case 'ruter':
-            return false; 
-          break;
-          case 'klver':
-            return true; 
-          break;
-          default: 
-            return false; 
-        }
-        break;
-        case 'klver':
-        switch (n.suit) {
-          case 'NT':
-            return false; 
-          break;
-          case 'spar':
-            return false; 
-          break;
-          case 'hjerter':
-            return false; 
-          break;
-          case 'ruter':
-            return false; 
-          break;
-          case 'klver':
-            return false; 
-          break;
-          default: 
-            return false; 
-        }
-        break;
-        default: 
-        return false; 
-    }
-  else return true; //
-
-  }; 
-
+  
   defensiv_tellPoengOgMeld = (cardio?: Card[]): Utils.Melding => {
     let points = 0;
     let suits: Utils.SuitCount = {};
@@ -292,6 +190,7 @@ export class Spiller implements SpillerIF {
       cards = cardio;
     else cards = this.my_cards; 
 
+    console.log("Defensivt"); 
 
     for (let i = 0; i < cards.length; i++) {
       let card = cards[i];
@@ -327,6 +226,7 @@ export class Spiller implements SpillerIF {
       
     });
     points+=fpo; 
+    this._poeng = points; 
 
     // Bestem åpningsmeldingen basert på poengsummen
     
@@ -339,24 +239,31 @@ export class Spiller implements SpillerIF {
         }
       }
       console.log(`Poeng på hånda: ${points}!`);
-      if (b.siste_i_boksen.melding.niva < 3) {
-        if (this.lower_than(b.siste_i_boksen.melding, {niva: 1, suit: longestSuit}))
+      if (this.bord.siste_i_boksen.melding.niva < 3) {
+        if (Utils.lower_than(this.bord.siste_i_boksen.melding, {niva: 1, suit: longestSuit}))
+        { 
+          this.bord.no_pass = 0; 
           return {niva: 1, suit: longestSuit}; 
-        else if (this.lower_than(b.siste_i_boksen.melding, {niva: 2, suit: longestSuit}))
+        }
+        else if (Utils.lower_than(this.bord.siste_i_boksen.melding, {niva: 2, suit: longestSuit}))
+        {
+          this.bord.no_pass = 0; 
           return {niva: 2, suit: longestSuit}
+        }
         else {
-          b.no_pass++;
+          this.bord.no_pass += 1;
           return {niva: 0, suit: 'Pass'};
         } 
       } 
       else {
-        b.no_pass++;
+        this.bord.no_pass += 1;
         return {niva: 0, suit: 'Pass'}; //'Pass'; 
       }
+      this.bord.no_pass = 0; 
       return {niva: 1, suit: longestSuit}; // `1 ${longestSuit}`;
     }
     console.log(`Poeng på hånda: ${points}!`); 
-    b.no_pass++; 
+    this.bord.no_pass += 1; 
     return {niva: 0, suit: 'Pass'}; //'Pass';
   };
 
@@ -372,6 +279,7 @@ export class Spiller implements SpillerIF {
       cards = cardio;
     else cards = this.my_cards; 
 
+    console.log("Støtte"); 
 
     for (let i = 0; i < cards.length; i++) {
       let card = cards[i];
@@ -382,7 +290,6 @@ export class Spiller implements SpillerIF {
       if (rank >= 11) {
         points += rank - 10;
       }
-  
   
       // Hold oversikt over antall kort i hver farge
       if (suit in suits) {
@@ -403,6 +310,7 @@ export class Spiller implements SpillerIF {
       //console.log(`Fargen ${key} øker med ${fpo} foredelingspoeng`);
     });
     points+=fpo; 
+    this._poeng = points; 
 
     // Bestem åpningsmeldingen basert på poengsummen
 
@@ -418,26 +326,33 @@ export class Spiller implements SpillerIF {
     
     if (points > 10) //meld lengste farge uansett - litt grovt dette
     {
-      if (this.lower_than(b.siste_i_boksen.melding, {niva: b.siste_i_boksen.melding.niva, suit: longestSuit}))
-        return {niva: b.siste_i_boksen.melding.niva, suit: longestSuit}; 
-      else
-        return {niva: b.siste_i_boksen.melding.niva+1, suit: longestSuit}
-    }
-    else if (points > 6) //støtt så forsiktig som mulig, farge som makker
-      return {niva: b.siste_i_boksen.melding.niva+1, suit: b.siste_i_boksen.melding.suit}; 
-    //eller i verste fall
+      let ny_melding = {niva: this.bord.siste_i_boksen.melding.niva, suit: longestSuit}; 
+      console.log(`Sjekker om ${this.bord.siste_i_boksen.melding} er lavere enn ${ny_melding}`);
 
-    b.no_pass++; 
+      if (Utils.lower_than(this.bord.siste_i_boksen.melding, ny_melding))
+      {
+        this.bord.no_pass = 0; 
+        return ny_melding; 
+      }
+      else
+      {
+        this.bord.no_pass = 0; 
+        return {niva: this.bord.siste_i_boksen.melding.niva+1, suit: longestSuit}
+      }
+    }
+    else if (points > 6) //støtt så forsiktig som mulig, samme farge som makker
+    {
+      this.bord.no_pass = 0;   
+      return {niva: this.bord.siste_i_boksen.melding.niva+1, suit: this.bord.siste_i_boksen.melding.suit}; 
+    }
+    //eller i verste fall
+    this.bord.no_pass += 1;  
     return {niva: 0, suit: 'Pass'}; //'Pass';
   
   };
 
-  melding2string(m: Utils.Melding): string {
-    return m.niva + m.suit;  
-  }
 
 
-  
   suitsOrder: Utils.SuitPreference = {
     'spar': 0,
     'hjerter': 1,
@@ -476,17 +391,17 @@ export class Spiller implements SpillerIF {
 
     const hands: Card[][] = [[], [], [], []];
 
-    console.log("Får en kortstokk med " + deck.length + " kort"); 
-    console.log("Skal fordeles på " + b.playersConnected + " spillere"); 
+    //console.log("Får en kortstokk med " + deck.length + " kort"); 
+    //console.log("Skal fordeles på " + this.bord.playersConnected + " spillere"); 
    
-    let kort_til_hver = deck.length / b.playersConnected; 
-    console.log("Kort til hver " + kort_til_hver); 
+    let kort_til_hver = deck.length / this.bord.playersConnected; 
+    //console.log("Kort til hver " + kort_til_hver); 
 
 
     for (let i = 0; i < kort_til_hver; i++) {
-      console.log("i: " + i);
-      for (let j = 0; j < b.playersConnected; j++) {
-        console.log("j: " + j);
+      //console.log("i: " + i);
+      for (let j = 0; j < this.bord.playersConnected; j++) {
+        //console.log("j: " + j);
         hands[j][i] = deck.pop();
       }
     }

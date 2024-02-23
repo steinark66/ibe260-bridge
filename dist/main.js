@@ -47,6 +47,7 @@ const Utils = __importStar(require("./Utils"));
 // Our Express app.
 const app = (0, express_1.default)();
 var session = require('express-session'); //gammel skrivemåte - rydd opp
+const b = new Bord_1.BridgeBord();
 // Handle JSON in request bodies.
 app.use(express_1.default.json());
 app.use(body_parser_1.default.json());
@@ -76,13 +77,16 @@ app.post("/ta-plass", (inRequest, inResponse) => __awaiter(void 0, void 0, void 
     console.log("POST /ta-plass", inRequest.body);
     console.log(`Welcome ${session.username} til vår ${session}!`);
     console.log(`Er ${session.telefonnr} riktig ?`);
-    if (Bord_1.b.playersConnected === Bord_1.b.max_players) {
+    if (b.playersConnected === b.max_players) {
         inResponse.status(503).send('Too many players connected.');
         return;
     }
-    Bord_1.b.incPlayersConnected = 1;
+    b.incPlayersConnected = 1;
+    if (b.playersConnected === 4)
+        //b = new BridgeBord();
+        b.nullstill();
     try {
-        Bord_1.b.spillere.push(new Spiller_1.Spiller(session.username));
+        b.spillere.push(new Spiller_1.Spiller(session.username, b));
         console.log("POST /ta-plass: Ok");
         inResponse.send("<html><head></head><body></body></html>");
     }
@@ -92,61 +96,69 @@ app.post("/ta-plass", (inRequest, inResponse) => __awaiter(void 0, void 0, void 
     }
 }));
 app.get('/ready', (req, res) => {
-    Bord_1.b.playersReady++;
+    b.playersReady++;
     let shuffledDeck;
     let dealtDeck;
-    console.log("Players ready: " + Bord_1.b.playersReady + " AND SIGNED UP " + Bord_1.b.playersConnected);
-    if (Bord_1.b.playersReady === Bord_1.b.playersConnected) {
-        Bord_1.b.myDeck = Utils.getDeck();
-        shuffledDeck = Bord_1.b.spillere[Bord_1.b.current_dealer].shuffle_cards(Bord_1.b.myDeck);
+    console.log("Players ready: " + b.playersReady + " AND SIGNED UP " + b.playersConnected);
+    if (b.playersReady === b.playersConnected) {
+        b.myDeck = Utils.getDeck();
+        shuffledDeck = b.spillere[b.current_dealer].shuffle_cards(b.myDeck);
         try {
-            dealtDeck = Bord_1.b.spillere[Bord_1.b.current_dealer].deal_cards(shuffledDeck);
+            dealtDeck = b.spillere[b.current_dealer].deal_cards(shuffledDeck);
             //console.log('Dette er ' + Plass.North + ' sine kort'); printDeck(
-            Bord_1.b.spillere[Bord_1.Plass.North].pick_up_cards(dealtDeck[Bord_1.Plass.North] //)
+            b.spillere[Bord_1.Plass.North].pick_up_cards(dealtDeck[Bord_1.Plass.North] //)
             );
             //console.log('Dette er ' + Plass.East + ' sine kort'); printDeck(
-            Bord_1.b.spillere[Bord_1.Plass.East].pick_up_cards(dealtDeck[Bord_1.Plass.East] //)
+            b.spillere[Bord_1.Plass.East].pick_up_cards(dealtDeck[Bord_1.Plass.East] //)
             );
             //console.log('Dette er ' + Plass.South + ' sine kort'); printDeck(
-            Bord_1.b.spillere[Bord_1.Plass.South].pick_up_cards(dealtDeck[Bord_1.Plass.South] //)
+            b.spillere[Bord_1.Plass.South].pick_up_cards(dealtDeck[Bord_1.Plass.South] //)
             );
             //console.log('Dette er ' + Plass.West + ' sine kort'); printDeck(
-            Bord_1.b.spillere[Bord_1.Plass.West].pick_up_cards(dealtDeck[Bord_1.Plass.West] //)
+            b.spillere[Bord_1.Plass.West].pick_up_cards(dealtDeck[Bord_1.Plass.West] //)
             );
-            const html_output = Utils.renderDeck(Bord_1.Plass.North, dealtDeck);
+            const html_output = Utils.renderDeck(Bord_1.Plass.North, dealtDeck, b);
             console.log("Vi har nok spillere nå");
             res.send(html_output);
         }
         catch (e) {
             console.log(e);
         }
-        Bord_1.b.playersReady = 0;
+        b.playersReady = 0;
     }
     else {
         // Send et tomt HTML-dokument som respons
         // console.log(`Vi trenger mer enn ${playersReady} spillere!`);
-        res.send(`<html><head></head><body> ${Bord_1.b.playersReady} spillere er klare! </body></html>`);
+        res.send(`<html><head></head><body> ${b.playersReady} spillere er klare! </body></html>`);
     }
 });
 app.get('/meld', (req, res) => {
     //current_bidder skal melde og øke med klokka (pluss på 1)
-    Bord_1.b.siste_melding = Bord_1.b.spillere[Bord_1.b.current_bidder].tellPoengOgMeld();
-    let tekst_melding = Bord_1.b.spillere[Bord_1.b.current_bidder].melding2string(Bord_1.b.siste_melding);
-    let melding = Bord_1.b.plass2String(Bord_1.b.current_bidder) + " melder " + tekst_melding;
-    if (Bord_1.b.no_pass < 4) {
-        Bord_1.b.nestemelder();
+    let siste_m = b.spillere[b.current_bidder].tellPoengOgMeld();
+    if (siste_m.niva !== 0) //pass 
+     {
+        b.siste_melding = siste_m;
+        b.siste_i_boksen = { plass: b.current_bidder, melding: b.siste_melding };
+    }
+    let tekst_melding = Utils.melding2string(siste_m);
+    let melding = b.plass2String(b.current_bidder) + " melder " + tekst_melding + " med "
+        + b.spillere[b.current_bidder].poeng + " poeng ";
+    if (b.no_pass < 4) {
+        b.nestemelder();
         res.send(`<html><head></head><body> ${melding} </body></html>`);
     }
-    else
+    else {
+        b.no_pass = 0;
         res.send(`<html><head></head><body> Da kan dere begynne å spille - alle har passet </body></html>`);
+    }
 });
 app.get("/nullstill", (req, res) => {
-    Bord_1.b.nullstill();
+    b.nullstill();
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send("Nå kan du starte et nytt spill");
 });
 app.get("/nestespill", (req, res) => {
-    Bord_1.b.nestespill();
+    b.nestespill();
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send("Er dere klare for et nytt spill?");
 });
