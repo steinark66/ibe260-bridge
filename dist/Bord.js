@@ -79,6 +79,9 @@ class BridgeBord extends KortBord {
         this._max_players = 4;
         // Deklarerer en attributt "no_pass" og setter den til 0, skjermer den, slik at vi vet hvordan den endres
         this._no_pass = 0;
+        // Deklarerer attributtene "current_dealer" og "current_bidder" av typen Plass
+        this._c_dealer = Plass.North;
+        this._c_bidder = Plass.North;
         // Deklarerer attributtene "siste_melding" og "siste_i_boksen" med deres respektive typer og initialverdier
         this.siste_melding = { niva: 0, suit: "" };
         this.siste_i_boksen = { plass: Plass.North, melding: this.siste_melding };
@@ -91,34 +94,43 @@ class BridgeBord extends KortBord {
         */
         ];
         this._playersConnected = 0;
-        this._current_dealer = Plass.North;
-        this._current_bidder = Plass.North;
+        this.curr_dealer = Plass.North;
+        this.curr_bidder = Plass.North;
     }
-    get current_bidder() {
-        return this._current_bidder;
+    get curr_bidder() {
+        return this._c_bidder;
     }
-    get current_dealer() {
-        return this._current_dealer;
+    get curr_dealer() {
+        return this._c_dealer;
+    }
+    set curr_bidder(p) {
+        this._c_bidder = p;
+    }
+    set curr_dealer(p) {
+        this._c_dealer = p;
     }
     // En metode som oppdaterer "current_dealer" med neste spiller basert på verdien av current_dealer
     nestespill() {
-        if (this._current_dealer < Plass.West)
-            this._current_dealer++;
+        if (this.curr_dealer < Plass.West)
+            this.curr_dealer += 1;
         else
-            this._current_dealer = Plass.North;
+            this.curr_dealer = Plass.North;
+        this.curr_bidder = this.curr_dealer;
         this._no_pass = 0;
+        this.siste_melding = { niva: 0, suit: "" };
+        this.siste_i_boksen = { plass: this.curr_dealer, melding: this.siste_melding };
     }
     // En metode som oppdaterer "current_bidder" med neste spiller basert på verdien av current_bid
     nestemelder() {
-        if (this._current_bidder < Plass.West)
-            this._current_bidder++;
+        if (this.curr_bidder < Plass.West)
+            this.curr_bidder += 1;
         else
-            this._current_bidder = Plass.North;
+            this.curr_bidder = Plass.North;
     }
-    // En metode som nullstiller relevante attributter slik at vi kan begynne på et nytt spill
+    // En metode som nullstiller relevante attributter slik at vi kan begynne på et helt nytt spill
     nullstill() {
-        this._current_dealer = Plass.North;
-        //this.current_bidder = Plass.North;
+        this.curr_dealer = Plass.North;
+        this.curr_bidder = Plass.North;
         this.playersReady = 0;
         this._no_pass = 0;
         this.siste_melding = { niva: 0, suit: "" };

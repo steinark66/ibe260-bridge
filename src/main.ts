@@ -48,6 +48,9 @@ const secret_Noth = Utils.randomBytes.toString('hex'),
   secret_South = Utils.randomBytes.toString('hex'),
   secret_West = Utils.randomBytes.toString('hex');
 
+
+
+
 app.post("/ta-plass",
 async (inRequest: Request, inResponse: Response) => {
   
@@ -93,10 +96,12 @@ app.get('/ready', (req, res) => {
   
 if (b.playersReady === b.playersConnected) {
     b.myDeck = Utils.getDeck(); 
-    shuffledDeck = b.spillere[b.current_dealer].shuffle_cards(b.myDeck);
+    b.no_pass = 0; 
+    b.nestespill(); 
+    shuffledDeck = b.spillere[b.curr_dealer].shuffle_cards(b.myDeck);
     try {
       
-      dealtDeck = b.spillere[b.current_dealer].deal_cards(shuffledDeck); 
+      dealtDeck = b.spillere[b.curr_dealer].deal_cards(shuffledDeck); 
       
       //console.log('Dette er ' + Plass.North + ' sine kort'); printDeck(
         b.spillere[Plass.North].pick_up_cards(dealtDeck[Plass.North] //)
@@ -131,18 +136,24 @@ app.get('/meld', (req, res) => {
   
   //current_bidder skal melde og øke med klokka (pluss på 1)
 
-  let siste_m = b.spillere[b.current_bidder].tellPoengOgMeld(); 
+  console.log("Hvem er b.curr_bidder? : " + b.plass2String(b.curr_bidder)); 
+  
+  let siste_m = b.spillere[b.curr_bidder].tellPoengOgMeld(); 
+
+  console.log("ikke snakke om saken! " +  siste_m.niva + " " + siste_m.suit); 
+
+
 
   if (siste_m.niva !== 0) //pass 
   {
     b.siste_melding = siste_m; 
-    b.siste_i_boksen = {plass: b.current_bidder, melding: b.siste_melding}; 
-  }
+    b.siste_i_boksen = {plass: b.curr_bidder, melding: b.siste_melding}; 
+  } 
 
   let tekst_melding = Utils.melding2string(siste_m);
 
-  let melding = b.plass2String(b.current_bidder) + " melder " + tekst_melding + " med "
-    + b.spillere[b.current_bidder].poeng + " poeng "; 
+  let melding = b.plass2String(b.curr_bidder) + " melder " + tekst_melding + " med "
+    + b.spillere[b.curr_bidder].poeng + " poeng "; 
   
   if (b.no_pass < 4) 
   { 
@@ -151,6 +162,7 @@ app.get('/meld', (req, res) => {
   } else 
   {
     b.no_pass = 0; 
+
     res.send(`<html><head></head><body> Da kan dere begynne å spille - alle har passet </body></html>`);
   }
 
@@ -174,8 +186,6 @@ app.get("/", (req, res) => {
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send("Her kan jeg skrive mine spede forsøk på å lage en bridge-robot");
 });
-
-
 
 app.listen(3030, () => {
   console.log("Serveren lytter på port 3030");

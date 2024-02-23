@@ -60,7 +60,6 @@ export class Spiller implements SpillerIF {
     return false; 
   }
 
-
   tellPoengOgMeld = (cardio?: Card[]): Utils.Melding => {
     let points = 0;
     let suits: Utils.SuitCount = {};
@@ -72,23 +71,29 @@ export class Spiller implements SpillerIF {
       cards = cardio;
     else cards = this.my_cards; 
 
-    console.log("Vi har " + this.bord.no_pass + " som har passet til nå"); 
-    console.log("Siste melding var fra " + this.bord.siste_i_boksen.plass + " : " + this.bord.siste_i_boksen.melding.niva + " " + this.bord.siste_i_boksen.melding.suit); 
+    console.log("Vi har " + this.bord.no_pass + " pass til nå"); 
+    console.log("Siste melding var " + this.bord.plass2String(this.bord.siste_i_boksen.plass) + " : " + this.bord.siste_i_boksen.melding.niva + " " + this.bord.siste_i_boksen.melding.suit); 
 
-    if (this.bord.no_pass >= 3) 
+    if (this.bord.no_pass >= 3)
+    //Når tre før meg har passet, så melder ikke jeg. 
     {
-      this.bord.no_pass += 1; 
+      //this.bord.no_pass += 1; 
       return {niva: 0, suit: "Pass"}; 
     }
 
-    if (this.bord.siste_i_boksen.melding.niva === 0) //Åpningsmelding
+    if (this.bord.siste_i_boksen.melding.niva === 0) //Åpningsmelding, ingen har meldt før meg
       return this.opening_tellPoengOgMeld(cards); 
-    else if (!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //defensiv melding
+    else if // (!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //defensiv melding
+    (!this.min_makker(this.bord.siste_i_boksen.plass)) //defensiv melding
       return this.defensiv_tellPoengOgMeld(cards);  
     else //egentlig unødvendig test, må være makker som har meldt - eller jeg selv? 
-        if (!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //støttemelding
+        if //(!this.bord.spillere[this.bord.current_bidder].min_makker(this.bord.siste_i_boksen.plass)) //støttemelding
+        (this.min_makker(this.bord.siste_i_boksen.plass)) //støttemelding
+        //så obs, da må det vel være min makker som har meldt?
       return this.support_tellPoengOgMeld(cards);
     else {
+      //hit skal vi vel strengt tatt ikke komme, siden det ikke er jeg som åpner, og det ikke er motspiller som har meldt og ikke
+      //makker - det er vel i så fall bare om det er meg selv? 
       this.bord.no_pass += 1; 
       return {niva: 0, suit: "Pass"}; 
     }
@@ -372,7 +377,6 @@ export class Spiller implements SpillerIF {
         // Hvis fargene er de samme, sorter etter verdi
         if (a.rank < b.rank) {
           return -1;
-        } else if (a.rank > b.rank) {
           return 1;
         } else {
           return 0;

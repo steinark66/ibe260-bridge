@@ -10,7 +10,7 @@ import * as Utils from "./Utils";
 import {SessionData, Card} from "./typings/express-session/index";
 
 // Eksporterer en liste-type (enum) Plass med verdiene "North", "East", "South" og "West"
-export enum Plass {North, East, South, West}; 
+export enum Plass {North = 0, East = 1, South = 2, West = 3}; 
 
 // Skal bruke et grensesnitt KortBordIF, trenger vel ikke å eksportere det? 
 interface KortBordIF {
@@ -76,42 +76,55 @@ export class BridgeBord extends KortBord {
       */
     ];
     this._playersConnected = 0; 
-    this._current_dealer = Plass.North; 
-    this._current_bidder = Plass.North;
+    this.curr_dealer = Plass.North; 
+    this.curr_bidder = Plass.North;
   }
 
     // Deklarerer attributtene "current_dealer" og "current_bidder" av typen Plass
-    private _current_dealer: Plass; 
-    private _current_bidder: Plass; 
+    private _c_dealer: Plass = Plass.North; 
+    private _c_bidder: Plass = Plass.North; 
 
 
-    get current_bidder () {
-        return this._current_bidder; 
+    get curr_bidder () {
+        return this._c_bidder; 
     }
   
-    get current_dealer () {
-        return this._current_dealer; 
+    get curr_dealer () {
+        return this._c_dealer; 
+    }
+
+    set curr_bidder (p: Plass) {
+        this._c_bidder = p; 
+    }
+  
+    set curr_dealer (p: Plass) {
+        this._c_dealer = p; 
     }
 
     // En metode som oppdaterer "current_dealer" med neste spiller basert på verdien av current_dealer
     nestespill() {
-      if (this._current_dealer < Plass.West)
-        this._current_dealer++; 
-      else this._current_dealer = Plass.North; 
+      if (this.curr_dealer < Plass.West)
+        this.curr_dealer+=1; 
+      else this.curr_dealer = Plass.North; 
+      this.curr_bidder = this.curr_dealer;
       this._no_pass = 0; 
+      
+      this.siste_melding = {niva: 0, suit: ""}; 
+      this.siste_i_boksen = {plass: this.curr_dealer, melding: this.siste_melding};
+
     }
   
     // En metode som oppdaterer "current_bidder" med neste spiller basert på verdien av current_bid
-    nestemelder() {
-      if (this._current_bidder < Plass.West)
-        this._current_bidder++; 
-      else this._current_bidder = Plass.North; 
+    nestemelder() {  
+      if (this.curr_bidder < Plass.West)
+        this.curr_bidder+=1; 
+      else this.curr_bidder = Plass.North; 
     }
   
-    // En metode som nullstiller relevante attributter slik at vi kan begynne på et nytt spill
+    // En metode som nullstiller relevante attributter slik at vi kan begynne på et helt nytt spill
     nullstill() {
-      this._current_dealer = Plass.North;
-      //this.current_bidder = Plass.North;
+      this.curr_dealer = Plass.North;
+      this.curr_bidder = Plass.North;
       this.playersReady = 0; 
       this._no_pass = 0; 
       this.siste_melding = {niva: 0, suit: ""}; 
